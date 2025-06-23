@@ -1,31 +1,23 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# **Automated Metadata Generator**
-
-# In[39]:
-
-
-# In[40]:
-
-
-#This project extracts and generates structured metadata from uploaded documents (PDF, DOCX, TXT) using NLP and OCR.
-
-
-# In[41]:
-
-
 import os
 import json
 import pytesseract
 import docx
-import fitz #pyMupdf
+import fitz  # PyMuPDF
 from PIL import Image
 from pdf2image import convert_from_path
 from datetime import datetime
 from transformers import pipeline
+from collections import Counter
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+import langdetect
+import uuid
+import spacy
 
+# Load models
+summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+nlp = spacy.load("en_core_web_sm")
 
+# --- Text Extraction Functions ---
 def extract_text_from_txt(file):
     return file.read().decode("utf-8")
 
@@ -47,25 +39,7 @@ def extract_text_from_scanned_pdf(file_path):
         text += pytesseract.image_to_string(image)
     return text
 
-
-
-# In[42]:
-
-
-summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
-
-
-# In[43]:
-
-
-from collections import Counter
-from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
-import langdetect
-import uuid
-import spacy
-
-nlp = spacy.load("en_core_web_sm")
-
+# --- Metadata Generation ---
 def generate_metadata(text, filename, filetype, page_count=None):
     words = text.split()
     lines = text.strip().split("\n")
@@ -92,10 +66,8 @@ def generate_metadata(text, filename, filetype, page_count=None):
     doc = nlp(text[:1000])
     named_entities = list(set([ent.text for ent in doc.ents if len(ent.text.strip()) > 3]))
 
-    document_id = str(uuid.uuid4())
-
     metadata = {
-        "document_id": document_id,
+        "document_id": str(uuid.uuid4()),
         "title": title,
         "summary": summary,
         "keywords": keywords,
@@ -112,31 +84,3 @@ def generate_metadata(text, filename, filetype, page_count=None):
         metadata["page_count"] = page_count
 
     return metadata
-
-
-if __name__ == "__main__":
-    filepath = r"C:\Users\SHIVA KAMALESH\Desktop\Finclub Summer Project 2 (2025)[1].docx"
-    filetype = filepath.split(".")[-1].lower()
-
-    if filetype == "txt":
-        with open(filepath, "rb") as f:
-            text = extract_text_from_txt(f)
-    elif filetype == "docx":
-        with open(filepath, "rb") as f:
-            text = extract_text_from_docx(f)
-    elif filetype == "pdf":
-        try:
-            with open(filepath, "rb") as f:
-                text = extract_text_from_pdf(f)
-        except:
-            text = extract_text_from_scanned_pdf(filepath)
-    else:
-        print(" Unsupported file type")
-        exit()
-
-    metadata = generate_metadata(text, os.path.basename(filepath), filetype)
-    print(json.dumps(metadata, indent=2))
-
-
-
-
