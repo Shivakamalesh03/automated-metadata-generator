@@ -1,0 +1,12 @@
+
+streamlit
+pytesseract
+python-docx
+PyMuPDF
+pdf2image
+Pillow
+transformers
+langdetect
+scikit-learn
+spacy
+uuid
