@@ -89,9 +89,12 @@ def summarize_text_transformers(text):
         chunks = [" ".join(text.split()[i:i + 600]) for i in range(0, len(text.split()), 600)]
         summary_chunks = []
         for chunk in chunks[:2]:
+            if len(chunk.strip().split()) < 50:
+                continue
             result = summarizer(chunk, max_length=120, min_length=40, do_sample=False)
             summary_chunks.append(result[0]['summary_text'])
-        return " ".join(summary_chunks).strip()
+        final_summary = " ".join(summary_chunks).strip()
+        return final_summary if final_summary else "Summary not available"
     except Exception as e:
         logging.warning(f"Summarization failed: {e}")
         return "Summary not available"
