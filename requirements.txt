@@ -1,13 +1,13 @@
 streamlit
+numpy<2.0
 pytesseract
 python-docx
 PyMuPDF
 pdf2image
 Pillow
 transformers==4.40.1
+sentencepiece
 langdetect
 scikit-learn
 spacy
-uuid
-torch==2.2.1
-sentencepiece
+torch==2.2.1 ; python_version < "3.13"
