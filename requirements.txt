@@ -5,6 +5,7 @@ python-docx
 PyMuPDF
 pdf2image
 Pillow
+transformers==4.40.1
 sumy==0.10.0
 langdetect
 scikit-learn==1.3.2
