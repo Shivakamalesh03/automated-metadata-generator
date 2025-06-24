@@ -83,23 +83,37 @@ def clean_title(text, fallback):
     return candidates[0] if candidates else fallback
 
 def summarize_text_transformers(text):
+    global summarizer
     if summarizer is None:
-        return "Summary not available"
+        try:
+            summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+        except Exception as e:
+            logging.error(f"Summarizer model failed to load at runtime: {e}")
+            return "Summary not available"
+
     try:
         chunks = [" ".join(text.split()[i:i + 600]) for i in range(0, len(text.split()), 600)]
         summary_chunks = []
-        for chunk in chunks[:2]:
+        for chunk in chunks[:2]:  # Limit to 2 chunks for speed
             if len(chunk.strip().split()) < 50:
                 continue
             result = summarizer(chunk, max_length=120, min_length=40, do_sample=False)
-            summary_chunks.append(result[0]['summary_text'])
+            if result and "summary_text" in result[0]:
+                summary_chunks.append(result[0]["summary_text"])
+
         final_summary = " ".join(summary_chunks).strip()
-        if not final_summary and len(text.split()) > 40:
-            final_summary = " ".join(text.split()[:40]) + "..."
-        return final_summary if final_summary else "Summary not available"
+
+        if not final_summary:
+            fallback = " ".join(text.split()[:50]) + "..." if len(text.split()) >= 50 else text
+            logging.warning("Summarizer returned empty summary. Using fallback.")
+            return fallback
+
+        return final_summary
+
     except Exception as e:
         logging.warning(f"Summarization failed: {e}")
-        return "Summary not available"
+        return " ".join(text.split()[:50]) + "..."
+
 
 # --- Metadata Generation ---
 def generate_metadata(text, filename, filetype, page_count=None):
