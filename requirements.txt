@@ -4,10 +4,10 @@ python-docx
 PyMuPDF
 pdf2image
 Pillow
-transformers
+transformers==4.40.1
 langdetect
 scikit-learn
 spacy
 uuid
-torch
+torch==2.2.1
 sentencepiece
