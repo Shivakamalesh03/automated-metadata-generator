@@ -9,5 +9,5 @@ transformers[sentencepiece]==4.40.1
 langdetect
 scikit-learn
 spacy
-uuid
-
+uuid==1.30
+sentencepiece
