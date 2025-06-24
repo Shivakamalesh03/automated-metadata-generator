@@ -23,10 +23,14 @@ except Exception as e:
 
 try:
     nlp = spacy.load("en_core_web_sm")
+except OSError:
+    from spacy.cli import download
+    download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 except Exception as e:
-    logging.error(f"❌ Failed to load spaCy model: {e}")
+    logging.error(f" Failed to load spaCy model: {e}")
     nlp = None
-
+    
 # Text Extraction Functions 
 def extract_text_from_txt(file):
     return file.read().decode("utf-8")
