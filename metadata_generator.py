@@ -4,34 +4,26 @@ import pytesseract
 import docx
 import fitz  # PyMuPDF
 from PIL import Image
-from pdf2image import convert_from_path
 from datetime import datetime
-from transformers import pipeline
 from collections import Counter
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import langdetect
 import uuid
 import spacy
 import logging
+from gensim.summarization import summarize as gensim_summarize
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-# --- Loaded models 
+# --- Load spaCy model ---
 try:
-    summarizer = pipeline("summarization", model="t5-small")
-except Exception as e:
-    logging.error(f"Failed to load summarizer: {e}")
-    summarizer = None
-
-try:
-    nlp = spacy.load("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm", disable=["parser", "textcat", "lemmatizer", "attribute_ruler"])
 except Exception as e:
     logging.error(f"Failed to load spaCy model: {e}")
     nlp = None
 
-    
-# Text Extraction Functions 
+# --- Text Extraction Functions ---
 def extract_text_from_txt(file):
     return file.read().decode("utf-8")
 
@@ -47,49 +39,97 @@ def extract_text_from_pdf(file):
     return text
 
 def extract_text_from_scanned_pdf(file_path):
-    images = convert_from_path(file_path)
     text = ""
-    for image in images:
-        text += pytesseract.image_to_string(image)
+    try:
+        doc = fitz.open(file_path)
+        for page_index in range(len(doc)):
+            pix = doc[page_index].get_pixmap(dpi=300)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            text += pytesseract.image_to_string(img)
+    except Exception as e:
+        logging.error(f"OCR failed: {e}")
     return text
 
-# Metadata Generation 
+# --- Helpers ---
+def clean_title(text, fallback):
+    lines = text.strip().split("\n")[:60]
+    candidates = []
+
+    for line in lines:
+        line = line.strip()
+        if not (10 < len(line) < 120):
+            continue
+        if any(bad in line.lower() for bad in ["arxiv", "doi", "abstract", "acknowledgements", "copyright"]):
+            continue
+        if sum(word.lower() in ENGLISH_STOP_WORDS for word in line.split()) >= len(line.split()) / 2:
+            continue
+        if line.lstrip("-0123456789. ").istitle() and line[0].isupper():
+            candidates.append(line)
+
+    if not candidates:
+        for line in lines:
+            if "mental health" in line.lower() or "introduction" in line.lower():
+                candidates.append(line.strip())
+
+    candidates = sorted(candidates, key=lambda x: (-len(x.split()), len(x)))
+    return candidates[0] if candidates else fallback
+
+def summarize_text_fast(text):
+    try:
+        summary = gensim_summarize(text, word_count=100)
+        return summary if summary else "Summary not available"
+    except Exception as e:
+        logging.warning(f"Summarization failed: {e}")
+        return "Summary not available"
+
+# --- Metadata Generation ---
 def generate_metadata(text, filename, filetype, page_count=None):
     words = text.split()
-    lines = text.strip().split("\n")
+    logging.info(f"Text length: {len(words)} words")
 
-    title = next((line.strip() for line in lines if len(line.strip()) > 10), filename)
+    # Trim input to 3000 words for faster processing
+    limited_text = " ".join(words[:3000])
+
+    # --- Title extraction
+    title = clean_title(limited_text, filename)
     if len(title) > 80:
         title = title[:77] + "..."
 
-    # Summary
-    try:
-        if summarizer:
-            summary = summarizer(text[:1000], max_length=100, min_length=30, do_sample=False)[0]['summary_text']
-        else:
-            raise ValueError("Summarizer not available")
-    except:
-        summary = " ".join(words[:40]) + ("..." if len(words) > 40 else "")
-    summary = summary.strip()
+    # --- Summary generation
+    summary = summarize_text_fast(limited_text)
 
-    # Keywords
-    cleaned_words = [word.lower().strip(".,()[]{}\":'") for word in words if len(word) > 4 and word.lower() not in ENGLISH_STOP_WORDS]
-    freq_keywords = [word for word, count in Counter(cleaned_words).most_common(15)]
-    keywords = list(dict.fromkeys(freq_keywords))[:10]
+    # --- Keyword extraction (TF-based + stopword filtering)
+    cleaned_words = [
+        word.lower().strip(".,()[]{}\":'")
+        for word in words
+        if len(word) > 4 and word.lower() not in ENGLISH_STOP_WORDS
+    ]
+    top_keywords = [word for word, _ in Counter(cleaned_words).most_common(30)]
+    keywords = list(dict.fromkeys(top_keywords))[:10]
 
-    # Language
+    # --- Language detection
     try:
         language = langdetect.detect(text[:1000])
-    except:
+    except Exception as e:
+        logging.warning(f"Language detection failed: {e}")
         language = "unknown"
 
-    # Named entities
+    # --- Named entity recognition
+    named_entities = []
     if nlp:
-        doc = nlp(text[:1000])
-        named_entities = list(set([ent.text for ent in doc.ents if len(ent.text.strip()) > 3]))
+        try:
+            doc = nlp(limited_text)
+            named_entities = list(set(
+                ent.text.strip()
+                for ent in doc.ents
+                if ent.label_ in {"PERSON", "ORG", "GPE", "DATE"} and 2 <= len(ent.text.strip().split()) <= 6
+            ))
+        except Exception as e:
+            logging.warning(f"NER failed: {e}")
     else:
-        named_entities = []
+        logging.warning("spaCy NLP model not loaded")
 
+    # --- Construct metadata dict
     metadata = {
         "document_id": str(uuid.uuid4()),
         "title": title,
