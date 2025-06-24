@@ -5,9 +5,9 @@ python-docx
 PyMuPDF
 pdf2image
 Pillow
-transformers==4.40.1
-sentencepiece
+transformers[sentencepiece]==4.40.1
 langdetect
 scikit-learn
 spacy
-torch==2.2.1 ; python_version < "3.13"
+uuid
+
