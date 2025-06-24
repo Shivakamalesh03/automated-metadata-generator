@@ -16,10 +16,10 @@ import logging
 
 # --- Loaded models 
 try:
-    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+    summarizer = pipeline("summarization", model="t5-small")
 except Exception as e:
-    logging.error(f" Failed to load summarizer: {e}")
-    summarizer = None
+    logging.error(f"Failed to load summarizer: {e}")
+    summarizer = Nones
 
 try:
     nlp = spacy.load("en_core_web_sm")
