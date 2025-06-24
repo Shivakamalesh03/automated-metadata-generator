@@ -41,8 +41,10 @@ if uploaded_file:
             elif filetype == "pdf":
                 try:
                     text = extract_text_from_pdf(uploaded_file)
-                except:
-                    st.warning("Standard PDF extraction failed. Trying OCR fallback...")
+                    if not text.strip():
+                        raise ValueError("Empty PDF content")
+                except Exception as e:
+                    st.warning(f"PDF extraction failed: {e}. Trying OCR fallback...")
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
                         tmp_file.write(uploaded_file.read())
                         tmp_file_path = tmp_file.name
@@ -54,6 +56,10 @@ if uploaded_file:
         except Exception as e:
             st.error(f"Error reading file: {e}")
             st.stop()
+
+    if not text.strip():
+        st.error("No content could be extracted from the file.")
+        st.stop()
 
     st.subheader("Extracted Text (First 3000 characters)")
     st.text_area("Preview", text[:3000], height=300)
