@@ -11,7 +11,9 @@ import langdetect
 import uuid
 import spacy
 import logging
-from gensim.summarization import summarize as gensim_summarize
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -43,7 +45,7 @@ def extract_text_from_scanned_pdf(file_path):
     try:
         doc = fitz.open(file_path)
         for page_index in range(len(doc)):
-            pix = doc[page_index].get_pixmap(dpi=300)
+            pix = doc[page_index].get_pixmap(dpi=200)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
             text += pytesseract.image_to_string(img)
     except Exception as e:
@@ -52,7 +54,7 @@ def extract_text_from_scanned_pdf(file_path):
 
 # --- Helpers ---
 def clean_title(text, fallback):
-    lines = text.strip().split("\n")[:60]
+    lines = text.strip().split("\n")[:40]
     candidates = []
 
     for line in lines:
@@ -74,10 +76,12 @@ def clean_title(text, fallback):
     candidates = sorted(candidates, key=lambda x: (-len(x.split()), len(x)))
     return candidates[0] if candidates else fallback
 
-def summarize_text_fast(text):
+def summarize_text_fast(text, sentence_count=3):
     try:
-        summary = gensim_summarize(text, word_count=100)
-        return summary if summary else "Summary not available"
+        parser = PlaintextParser.from_string(text, Tokenizer("english"))
+        summarizer = LsaSummarizer()
+        summary = summarizer(parser.document, sentence_count)
+        return " ".join(str(sentence) for sentence in summary)
     except Exception as e:
         logging.warning(f"Summarization failed: {e}")
         return "Summary not available"
@@ -87,8 +91,8 @@ def generate_metadata(text, filename, filetype, page_count=None):
     words = text.split()
     logging.info(f"Text length: {len(words)} words")
 
-    # Trim input to 3000 words for faster processing
-    limited_text = " ".join(words[:3000])
+    # Trim input to 2000 words for speed
+    limited_text = " ".join(words[:2000])
 
     # --- Title extraction
     title = clean_title(limited_text, filename)
