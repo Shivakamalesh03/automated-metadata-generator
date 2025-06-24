@@ -14,12 +14,15 @@ import uuid
 import spacy
 import logging
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
 # --- Loaded models 
 try:
     summarizer = pipeline("summarization", model="t5-small")
 except Exception as e:
     logging.error(f"Failed to load summarizer: {e}")
-    summarizer = Nones
+    summarizer = None
 
 try:
     nlp = spacy.load("en_core_web_sm")
@@ -28,8 +31,9 @@ except OSError:
     download("en_core_web_sm")
     nlp = spacy.load("en_core_web_sm")
 except Exception as e:
-    logging.error(f" Failed to load spaCy model: {e}")
+    logging.error(f"Failed to load spaCy model: {e}")
     nlp = None
+
     
 # Text Extraction Functions 
 def extract_text_from_txt(file):
