@@ -12,12 +12,22 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import langdetect
 import uuid
 import spacy
+import logging
 
-# Load models
-summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
-nlp = spacy.load("en_core_web_sm")
+# --- Loaded models 
+try:
+    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+except Exception as e:
+    logging.error(f" Failed to load summarizer: {e}")
+    summarizer = None
 
-# --- Text Extraction Functions ---
+try:
+    nlp = spacy.load("en_core_web_sm")
+except Exception as e:
+    logging.error(f"❌ Failed to load spaCy model: {e}")
+    nlp = None
+
+# Text Extraction Functions 
 def extract_text_from_txt(file):
     return file.read().decode("utf-8")
 
@@ -39,7 +49,7 @@ def extract_text_from_scanned_pdf(file_path):
         text += pytesseract.image_to_string(image)
     return text
 
-# --- Metadata Generation ---
+# Metadata Generation 
 def generate_metadata(text, filename, filetype, page_count=None):
     words = text.split()
     lines = text.strip().split("\n")
@@ -48,23 +58,33 @@ def generate_metadata(text, filename, filetype, page_count=None):
     if len(title) > 80:
         title = title[:77] + "..."
 
+    # Summary
     try:
-        summary = summarizer(text[:1000], max_length=100, min_length=30, do_sample=False)[0]['summary_text']
+        if summarizer:
+            summary = summarizer(text[:1000], max_length=100, min_length=30, do_sample=False)[0]['summary_text']
+        else:
+            raise ValueError("Summarizer not available")
     except:
         summary = " ".join(words[:40]) + ("..." if len(words) > 40 else "")
     summary = summary.strip()
 
+    # Keywords
     cleaned_words = [word.lower().strip(".,()[]{}\":'") for word in words if len(word) > 4 and word.lower() not in ENGLISH_STOP_WORDS]
     freq_keywords = [word for word, count in Counter(cleaned_words).most_common(15)]
     keywords = list(dict.fromkeys(freq_keywords))[:10]
 
+    # Language
     try:
         language = langdetect.detect(text[:1000])
     except:
         language = "unknown"
 
-    doc = nlp(text[:1000])
-    named_entities = list(set([ent.text for ent in doc.ents if len(ent.text.strip()) > 3]))
+    # Named entities
+    if nlp:
+        doc = nlp(text[:1000])
+        named_entities = list(set([ent.text for ent in doc.ents if len(ent.text.strip()) > 3]))
+    else:
+        named_entities = []
 
     metadata = {
         "document_id": str(uuid.uuid4()),
