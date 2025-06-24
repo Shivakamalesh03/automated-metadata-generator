@@ -94,6 +94,8 @@ def summarize_text_transformers(text):
             result = summarizer(chunk, max_length=120, min_length=40, do_sample=False)
             summary_chunks.append(result[0]['summary_text'])
         final_summary = " ".join(summary_chunks).strip()
+        if not final_summary and len(text.split()) > 40:
+            final_summary = " ".join(text.split()[:40]) + "..."
         return final_summary if final_summary else "Summary not available"
     except Exception as e:
         logging.warning(f"Summarization failed: {e}")
@@ -165,3 +167,4 @@ def generate_metadata(text, filename, filetype, page_count=None):
         metadata["page_count"] = page_count
 
     return metadata
+
