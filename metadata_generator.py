@@ -11,9 +11,7 @@ import langdetect
 import uuid
 import spacy
 import logging
-from sumy.parsers.plaintext import PlaintextParser
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.lsa import LsaSummarizer
+from transformers import pipeline
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -24,6 +22,13 @@ try:
 except Exception as e:
     logging.error(f"Failed to load spaCy model: {e}")
     nlp = None
+
+# --- Load transformer summarizer ---
+try:
+    summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+except Exception as e:
+    logging.error(f"Failed to load summarizer: {e}")
+    summarizer = None
 
 # --- Text Extraction Functions ---
 def extract_text_from_txt(file):
@@ -65,8 +70,9 @@ def clean_title(text, fallback):
             continue
         if sum(word.lower() in ENGLISH_STOP_WORDS for word in line.split()) >= len(line.split()) / 2:
             continue
-        if line.lstrip("-0123456789. ").istitle() and line[0].isupper():
-            candidates.append(line)
+        line_clean = line.lstrip("-0123456789. ").strip()
+        if line_clean.istitle() and line_clean[0].isupper():
+            candidates.append(line_clean)
 
     if not candidates:
         for line in lines:
@@ -76,12 +82,16 @@ def clean_title(text, fallback):
     candidates = sorted(candidates, key=lambda x: (-len(x.split()), len(x)))
     return candidates[0] if candidates else fallback
 
-def summarize_text_fast(text, sentence_count=3):
+def summarize_text_transformers(text):
+    if summarizer is None:
+        return "Summary not available"
     try:
-        parser = PlaintextParser.from_string(text, Tokenizer("english"))
-        summarizer = LsaSummarizer()
-        summary = summarizer(parser.document, sentence_count)
-        return " ".join(str(sentence) for sentence in summary)
+        chunks = [" ".join(text.split()[i:i + 600]) for i in range(0, len(text.split()), 600)]
+        summary_chunks = []
+        for chunk in chunks[:2]:
+            result = summarizer(chunk, max_length=120, min_length=40, do_sample=False)
+            summary_chunks.append(result[0]['summary_text'])
+        return " ".join(summary_chunks).strip()
     except Exception as e:
         logging.warning(f"Summarization failed: {e}")
         return "Summary not available"
@@ -91,8 +101,8 @@ def generate_metadata(text, filename, filetype, page_count=None):
     words = text.split()
     logging.info(f"Text length: {len(words)} words")
 
-    # Trim input to 2000 words for speed
-    limited_text = " ".join(words[:2000])
+    # Trim input to 3000 words for speed
+    limited_text = " ".join(words[:3000])
 
     # --- Title extraction
     title = clean_title(limited_text, filename)
@@ -100,7 +110,7 @@ def generate_metadata(text, filename, filetype, page_count=None):
         title = title[:77] + "..."
 
     # --- Summary generation
-    summary = summarize_text_fast(limited_text)
+    summary = summarize_text_transformers(limited_text)
 
     # --- Keyword extraction (TF-based + stopword filtering)
     cleaned_words = [
