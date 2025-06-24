@@ -11,7 +11,7 @@ import langdetect
 import uuid
 import spacy
 import logging
-from transformers import pipeline
+from transformers import pipeline, Pipeline
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -24,6 +24,7 @@ except Exception as e:
     nlp = None
 
 # --- Load transformer summarizer ---
+summarizer: Pipeline = None
 try:
     summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
 except Exception as e:
@@ -83,8 +84,13 @@ def clean_title(text, fallback):
     return candidates[0] if candidates else fallback
 
 def summarize_text_transformers(text):
+    global summarizer
     if summarizer is None:
-        return "Summary not available (summarizer not loaded)"
+        try:
+            summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+        except Exception as e:
+            logging.error(f"Runtime load failed: {e}")
+            return "Summary not available (summarizer failed to load)"
 
     try:
         chunks = [" ".join(text.split()[i:i + 500]) for i in range(0, len(text.split()), 500)]
@@ -178,6 +184,3 @@ def generate_metadata(text, filename, filetype, page_count=None):
         metadata["page_count"] = page_count
 
     return metadata
-
-
-
