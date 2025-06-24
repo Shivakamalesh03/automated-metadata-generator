@@ -1,4 +1,3 @@
-
 streamlit
 pytesseract
 python-docx
@@ -10,3 +9,5 @@ langdetect
 scikit-learn
 spacy
 uuid
+torch
+sentencepiece
