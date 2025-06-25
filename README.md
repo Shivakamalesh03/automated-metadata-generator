@@ -13,7 +13,7 @@ The Automated Metadata Generator is a lightweight web application that extracts 
 - **Text Extraction**: Handles standard and scanned PDFs, DOCX, and TXT formats.
 - **Web Interface**: Intuitive UI built with Streamlit for ease of use.
 
-## Technology Stack
+## Technology Stack Used
 
 - **Streamlit** – UI and interaction
 - **spaCy** – Named Entity Recognition
