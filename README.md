@@ -1,62 +1,47 @@
-# Automated Metadata Generation System
 
-This project helps you automatically generate useful metadata from your documents. It works with PDFs, Word files (DOCX), and plain text files. Even if the document is scanned (like an image-based PDF), the system can extract the text using OCR. Everything runs in a simple Streamlit web app.
+# Automated Metadata Generator
 
----
+The Automated Metadata Generator is a lightweight web application that extracts structured metadata from unstructured documents (PDF, DOCX, TXT). It helps users quickly understand a document by generating its title, summary, keywords, and named entities, along with language and file-level information.
 
 ## Features
 
-- Upload and process PDF, DOCX, and TXT files
-- OCR support for scanned PDFs using Tesseract
-- Generates metadata like:
-  - Title
-  - Summary
-  - Keywords
-  - Word and character counts
-  - Language detection
-  - Named entities (people, organizations, etc.)
-- Built-in NLP models for summarization (using HuggingFace Transformers)
-- Clean Streamlit interface to upload files and view metadata
-- Download results as a JSON file
+- **Title Detection**: Extracts a clean, contextually relevant title from the document.
+- **Summary Generation**: Uses a transformer-based NLP model to generate a short, readable summary.
+- **Keyword Extraction**: Identifies the top keywords based on word frequency, excluding stopwords.
+- **Named Entity Recognition (NER)**: Detects people, organizations, places, and dates.
+- **Language Detection**: Automatically identifies the document's language.
+- **Text Extraction**: Handles standard and scanned PDFs, DOCX, and TXT formats.
+- **Web Interface**: Intuitive UI built with Streamlit for ease of use.
 
----
+## Technology Stack
 
-## Tech Stack
-
-- **Frontend:** Streamlit  
-- **Backend:** Python  
-- **NLP & Text Processing:**  
-  - HuggingFace Transformers (T5-small)  
-  - spaCy (NER)  
-  - langdetect  
-- **OCR:** pytesseract  
-- **PDF Parsing:** PyMuPDF, pdf2image  
-- **DOCX Handling:** python-docx
-
----
-
+- **Streamlit** – UI and interaction
+- **spaCy** – Named Entity Recognition
+- **Transformers (Hugging Face)** – Text summarization
+- **PyMuPDF + pytesseract** – PDF parsing and OCR
+- **scikit-learn** – Keyword filtering
+- **langdetect** – Language detection
+- **Python 3.10** – Backend
+- 
 ## Installation
 
 1. Clone the repository:
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Shivakamalesh03/automated-metadata-generator.git
 cd automated-metadata-generator
-```
 
-2. Install the required packages:
+2.Create and activate a virtual environment
+python -m venv venv
+venv\Scripts\activate
 
-```bash
+3. Install the required packages:
+pip install --upgrade pip
 pip install -r requirements.txt
-```
 
-3. (Optional) Add `tesseract` to your system path if it's not already installed.
-
-4. Run the app:
-
-```bash
+4.Run the app
 streamlit run app.py
-```
 
 ---
 
